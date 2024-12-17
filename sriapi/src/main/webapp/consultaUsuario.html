@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consultar SRI</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #0072c6;
+      height: 100vh;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      overflow-y: auto;
+    }
+
+    .login-container {
+      background-color: white;
+      border-radius: 15px;
+      padding: 40px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 1200px; /* Ampliado aún más el ancho máximo */
+      text-align: center;
+      margin: 0 auto;
+      margin-top: 10%;
+    }
+
+    h1 {
+      color: #1e3d58;
+      margin-bottom: 30px;
+    }
+
+    .response-container {
+      text-align: left;
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      overflow-y: auto;
+      max-height: 400px; /* Limita la altura de la respuesta */
+    }
+
+    .table-container {
+      margin-top: 20px;
+      overflow-x: auto;
+      max-height: 400px; /* Limita la altura de la tabla */
+      overflow-y: auto;
+    }
+
+    table {
+      width: 100%; /* La tabla ahora ocupará todo el ancho disponible */
+      min-width: 1000px; /* Hacer la tabla aún más ancha */
+    }
+
+    .btn-primary {
+      margin-top: 20px;
+    }
+
+  </style>
+</head>
+<body>
+<div class="login-container">
+  <h1><i class="fas fa-search"></i> Consultar SRI</h1>
+  <form id="sriForm">
+    <div class="mb-3">
+      <label for="ruc" class="form-label">RUC</label>
+      <input type="text" id="ruc" name="ruc" class="form-control" required pattern="\d{13}" placeholder="Ingrese el RUC">
+      <div class="form-text">Ingrese un RUC válido de 13 dígitos.</div>
+    </div>
+    <button type="submit" class="btn btn-primary w-100 mb-3">Consultar</button>
+  </form>
+  <a href="/sriapi/consultarbase">Consultar Base</a>
+  <div id="response" class="response-container"></div>
+  <div class="table-container" id="tableContainer"></div>
+  <a href="login.jsp" class="btn btn-secondary w-100 mt-2">Inicio</a>
+</div>
+
+<script>
+  document.getElementById('sriForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const ruc = document.getElementById('ruc').value.trim();
+    const responseDiv = document.getElementById('response');
+    const tableContainer = document.getElementById('tableContainer');
+    responseDiv.innerHTML = '';
+    tableContainer.innerHTML = '';
+
+    try {
+      const response = await fetch(`/sriapi/consultar?ruc=${ruc}`);
+      const data = await response.json();
+
+      if (response.ok) {
+        const info = data[0];
+        const table = document.createElement('table');
+        table.classList.add('table', 'table-bordered', 'table-striped');
+        table.innerHTML = `
+                    <thead>
+                        <tr>
+                            <th>Campo</th>
+                            <th>Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>RUC</td><td>${info.numeroRuc}</td></tr>
+                        <tr><td>Razón Social</td><td>${info.razonSocial}</td></tr>
+                        <tr><td>Estado</td><td>${info.estadoContribuyenteRuc}</td></tr>
+                        <tr><td>Actividad Económica</td><td>${info.actividadEconomicaPrincipal}</td></tr>
+                        <tr><td>Tipo Contribuyente</td><td>${info.tipoContribuyente}</td></tr>
+                        <tr><td>Régimen</td><td>${info.regimen}</td></tr>
+                        <tr><td>Categoría</td><td>${info.categoria || 'No disponible'}</td></tr>
+                        <tr><td>Obligado Llevar Contabilidad</td><td>${info.obligadoLlevarContabilidad}</td></tr>
+                        <tr><td>Agente Retención</td><td>${info.agenteRetencion}</td></tr>
+                        <tr><td>Contribuyente Especial</td><td>${info.contribuyenteEspecial}</td></tr>
+                        <tr><td>Motivo Cancelación/Suspensión</td><td>${info.motivoCancelacionSuspension}</td></tr>
+                        <tr><td>Contribuyente Fantasma</td><td>${info.contribuyenteFantasma}</td></tr>
+                        <tr><td>Transacciones Inexistente</td><td>${info.transaccionesInexistente}</td></tr>
+                        <tr><td>Fecha Inicio Actividades</td><td>${formatDate(info.informacionFechasContribuyente.fechaInicioActividades)}</td></tr>
+                        <tr><td>Fecha Cese</td><td>${formatDate(info.informacionFechasContribuyente.fechaCese)}</td></tr>
+                        <tr><td>Fecha Reinicio Actividades</td><td>${formatDate(info.informacionFechasContribuyente.fechaReinicioActividades)}</td></tr>
+                        <tr><td>Fecha Actualización</td><td>${formatDate(info.informacionFechasContribuyente.fechaActualizacion)}</td></tr>
+                        <tr><td>Representante Legal</td><td>${info.representantesLegales.map(rep => `${rep.nombre} (${rep.identificacion})`).join(', ')}</td></tr>
+                    </tbody>
+                `;
+        tableContainer.appendChild(table);
+      } else {
+        responseDiv.innerText = 'Error al consultar los datos.';
+      }
+    } catch (error) {
+      responseDiv.innerText = 'Error al realizar la consulta.';
+    }
+  });
+
+  // Función para formatear las fechas
+  function formatDate(date) {
+    if (!date) return 'No disponible';
+    const formattedDate = new Date(date);
+    const year = formattedDate.getFullYear();
+    const month = (formattedDate.getMonth() + 1).toString().padStart(2, '0');
+    const day = formattedDate.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+</script>
+</body>
+</html>
